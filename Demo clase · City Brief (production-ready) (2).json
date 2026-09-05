@@ -1,0 +1,593 @@
+{
+  "name": "Demo clase · City Brief (production-ready)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## README · City Brief\n\n**URL test** (Listen / Execute):\n`POST https://<tu-n8n>/webhook-test/city-brief`\n\n**URL activa:**\n`POST https://<tu-n8n>/webhook/city-brief`\n\nBody: `{ \"city\": \"Madrid\" }`\n\n---\n\n## Guion en vivo (evidencia)\n\n**TC-001** funcional + integración  \n`POST { \"city\": \"Madrid\" }` → 200, briefing en español.\n\n**TC-002** error de entrada  \n`POST {}` → 400 `INPUT_MISSING_CITY` con hint y ejemplo.\n\n**TC-003** ciudad inexistente  \n`POST { \"city\": \"Narniaxyz\" }` → 404 `CITY_NOT_FOUND`. Open-Meteo responde 200 sin `results`; el IF lo convierte en error claro.\n\nAPI: geocoding-api.open-meteo.com (sin clave). CHANGELOG: 1.0.0",
+        "height": 736,
+        "width": 380,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4640,
+        1184
+      ],
+      "id": "9b369ab4-879b-4e5f-8b6f-5352c21482a9",
+      "name": "Sticky Note - Guion TC"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "city-brief",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        5072,
+        1472
+      ],
+      "id": "70ef0ef7-84ec-4ca9-a9d9-0546b6cd2c8d",
+      "name": "Webhook - City Brief Request",
+      "webhookId": "demo-city-brief-001",
+      "notes": "POST /city-brief. Espera { \"city\": \"Madrid\" }. Si falta el campo, no llamamos a Open-Meteo."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cond-city-not-empty",
+              "leftValue": "={{ $json.body.city }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5312,
+        1472
+      ],
+      "id": "32107517-cca8-42cb-a004-8779946ade9a",
+      "name": "Validate - City Present",
+      "notes": "True: city viene y no está vacío. False: 400 accionable."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "err-status",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "err-code",
+              "name": "code",
+              "value": "INPUT_MISSING_CITY",
+              "type": "string"
+            },
+            {
+              "id": "err-message",
+              "name": "message",
+              "value": "El campo city es obligatorio y no puede ir vacío.",
+              "type": "string"
+            },
+            {
+              "id": "err-hint",
+              "name": "hint",
+              "value": "Envía el nombre de una ciudad real, por ejemplo Madrid.",
+              "type": "string"
+            },
+            {
+              "id": "err-example",
+              "name": "example",
+              "value": "={{ { city: \"Madrid\" } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        5504,
+        1680
+      ],
+      "id": "78bb5094-c9af-4732-95a4-0198b674c487",
+      "name": "Format - Error Missing City"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: $json.status, code: $json.code, message: $json.message, hint: $json.hint, example: $json.example } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        5744,
+        1680
+      ],
+      "id": "9bc8d536-b7cf-43b2-8d01-68ab15cdec8f",
+      "name": "Respond - 400 JSON"
+    },
+    {
+      "parameters": {
+        "url": "https://geocoding-api.open-meteo.com/v1/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{ $json.body.city }}"
+            },
+            {
+              "name": "count",
+              "value": "1"
+            },
+            {
+              "name": "language",
+              "value": "es"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5552,
+        1440
+      ],
+      "id": "addb4fef-ea40-4438-9367-18694825ecea",
+      "name": "HTTP Request - Open-Meteo Geocoding",
+      "onError": "continueRegularOutput",
+      "notes": "Sin API key. Ciudad inexistente: 200 sin results. neverError + continue: el IF convierte el hueco en 404 propio."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cond-has-result-name",
+              "leftValue": "={{ $json.results[0].name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5792,
+        1440
+      ],
+      "id": "be316d26-8032-4b13-8f67-30391a7a2173",
+      "name": "Check - City Found",
+      "notesInFlow": false,
+      "notes": "True si results[0].name existe. False: Open-Meteo no encontró la ciudad."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "nf-status",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "nf-code",
+              "name": "code",
+              "value": "CITY_NOT_FOUND",
+              "type": "string"
+            },
+            {
+              "id": "nf-message",
+              "name": "message",
+              "value": "No encontramos esa ciudad en Open-Meteo.",
+              "type": "string"
+            },
+            {
+              "id": "nf-hint",
+              "name": "hint",
+              "value": "Prueba un nombre real, sin faltas: Madrid, Bogotá, Tokyo.",
+              "type": "string"
+            },
+            {
+              "id": "nf-example",
+              "name": "example",
+              "value": "={{ { city: \"Madrid\" } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        6032,
+        1680
+      ],
+      "id": "656b6e24-ffcb-4eff-ae10-2e2c2bf28f63",
+      "name": "Format - Error City Not Found"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: $json.status, code: $json.code, message: $json.message, hint: $json.hint, example: $json.example } }}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        6272,
+        1680
+      ],
+      "id": "86306b01-b6c1-4fcc-80ca-7c5b10d75ebd",
+      "name": "Respond - 404 JSON"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ex-city",
+              "name": "city",
+              "value": "={{ $json.results[0].name }}",
+              "type": "string"
+            },
+            {
+              "id": "ex-country",
+              "name": "country",
+              "value": "={{ $json.results[0].country }}",
+              "type": "string"
+            },
+            {
+              "id": "ex-population",
+              "name": "population",
+              "value": "={{ $json.results[0].population }}",
+              "type": "number"
+            },
+            {
+              "id": "ex-lat",
+              "name": "latitude",
+              "value": "={{ $json.results[0].latitude }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        6032,
+        1392
+      ],
+      "id": "a4fca943-12ac-4dbf-9e7e-4fd74b85e866",
+      "name": "Extract - City Facts"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Genera un briefing de viaje de una frase en español, cálido y breve.\n\nDatos:\n- ciudad: {{ $json.city }}\n- país: {{ $json.country }}\n- población: {{ $json.population }}\n- latitud: {{ $json.latitude }}\n\nDevuelve únicamente un JSON con esta forma exacta, sin markdown ni texto extra:\n{ \"message\": \"......\" }",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        6272,
+        1392
+      ],
+      "id": "52981961-c9e3-486f-9f40-3cf8b8639dc4",
+      "name": "Basic LLM Chain - Travel Brief"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        6272,
+        1600
+      ],
+      "id": "dc279d82-e791-4363-a111-cfb724ef814b",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "CBG7sGwYEiMfDWoP",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"message\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t}\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        6432,
+        1600
+      ],
+      "id": "0bf8f3f8-2d47-4742-be78-d079ac99a0b5",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok-success",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "ok-city",
+              "name": "city",
+              "value": "={{ $('Extract - City Facts').item.json.city }}",
+              "type": "string"
+            },
+            {
+              "id": "ok-country",
+              "name": "country",
+              "value": "={{ $('Extract - City Facts').item.json.country }}",
+              "type": "string"
+            },
+            {
+              "id": "ok-message",
+              "name": "message",
+              "value": "={{ $json.output.message || $json.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        6528,
+        1392
+      ],
+      "id": "7740e2e0-bdc0-4905-aed6-e09ee169971a",
+      "name": "Format - Success Brief"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: $json.success, city: $json.city, country: $json.country, message: $json.message } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        6768,
+        1392
+      ],
+      "id": "c99e188e-2289-4d1d-81b2-a9979a0ef7dc",
+      "name": "Respond - 200 JSON"
+    },
+    {
+      "parameters": {
+        "content": "## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)## Detalle de Pasos\n\n### 1. Pantalla de Bienvenida / Splash\n* **Acción:** El usuario abre la aplicación por primera vez.\n* **Opciones:**\n  * Iniciar Sesión.\n  * Crear Cuenta.\n\n### 2. Ruta A: Inicio de Sesión\n1. **Credenciales:** Se solicita correo electrónico y contraseña.\n2. **Validación:**\n   * **Éxito:** Redirige automáticamente al **Dashboard Principal**.\n   * **Error:** Muestra alerta (ej. *\"Credenciales incorrectas\"*).\n3. **Recuperación:** Opción para reenviar enlace de reseteo al correo del usuario.\n\n### 3. Ruta B: Registro de Nuevo Usuario\n1. **Formulario:** Captura de datos esenciales.\n2. **Validaciones en tiempo real:**\n   * Formato de email correcto.\n   * Contraseña con mínimo 8 caracteres.\n3. **Verificación:** Se genera un token temporal y se envía por email.\n4. **Activación:** Al verificar la cuenta, pasa directamente al **Dashboard Principal**.",
+        "height": 544,
+        "width": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4176,
+        1200
+      ],
+      "id": "87a80f57-e144-4323-9f5d-3ee89b8c0f37",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - City Brief Request": {
+      "main": [
+        [
+          {
+            "node": "Validate - City Present",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate - City Present": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Open-Meteo Geocoding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format - Error Missing City",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format - Error Missing City": {
+      "main": [
+        [
+          {
+            "node": "Respond - 400 JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Open-Meteo Geocoding": {
+      "main": [
+        [
+          {
+            "node": "Check - City Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check - City Found": {
+      "main": [
+        [
+          {
+            "node": "Extract - City Facts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format - Error City Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format - Error City Not Found": {
+      "main": [
+        [
+          {
+            "node": "Respond - 404 JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract - City Facts": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain - Travel Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain - Travel Brief": {
+      "main": [
+        [
+          {
+            "node": "Format - Success Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain - Travel Brief",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain - Travel Brief",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format - Success Brief": {
+      "main": [
+        [
+          {
+            "node": "Respond - 200 JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "985049c6-c74a-42af-acc7-a3e8d7c9d2b9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8caac22a76f54f0d9fa4b39def5761c78e1570d60ec65f0832cf40e0794f368a"
+  },
+  "nodeGroups": [],
+  "id": "IjSM6Y73ZfwSBv27",
+  "tags": []
+}
